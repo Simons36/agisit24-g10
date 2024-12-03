@@ -1,0 +1,150 @@
+---
+- name: "Deploy container image registry on RMCICD node"
+  hosts: rmcicd
+  become: yes
+  become_user: root
+  become_method: sudo
+  vars_files:
+    - "{{ playbook_dir }}/vars.yml"
+  tasks:
+    - pause:
+        prompt: "This playbook will deploy the current changes as the initial Docker container images. Continue?"
+    - name: Deploy registry container image
+      shell: |
+        docker run -d \
+          --name registry \
+          --restart=always \
+          -v /home/rmcicd/auth:/auth \
+          -e "REGISTRY_AUTH=htpasswd" \
+          -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm" \
+          -e "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd" \
+          -v /home/rmcicd/certs:/certs \
+          -e "REGISTRY_HTTP_TLS_CERTIFICATE=/certs/rmcicd.crt" \
+          -e "REGISTRY_HTTP_TLS_KEY=/certs/rmcicd.pem" \
+          -p 5000:5000 \
+          registry:2
+    - name: Copy source code to RMCICD (1/2)
+      copy:
+        src: "{{ playbook_dir }}/../services"
+        dest: /home/rmcicd/agisit24-g10
+    - name: Copy source code to RMCICD (2/2)
+      copy:
+        src: "{{ playbook_dir }}/../docker-compose.yml"
+        dest: /home/rmcicd/agisit24-g10
+    - name: Populate initial images
+      shell: |
+        cd /home/rmcicd/agisit24-g10
+        docker compose -f docker-compose.yml build
+    - name: Docker Login
+      shell: |
+        docker login localhost:5000 -u admin -p admin
+    - name: Push images to registry
+      shell: |
+        docker tag agisit24-g10-fe localhost:5000/agisit24-g10_fe:latest
+        docker tag agisit24-g10-be_carbs localhost:5000/agisit24-g10_be-carbs:latest
+        docker tag agisit24-g10-be_dairy localhost:5000/agisit24-g10_be-dairy:latest
+        docker tag agisit24-g10-be_meats localhost:5000/agisit24-g10_be-meats:latest
+        docker tag agisit24-g10-be_vegetables localhost:5000/agisit24-g10_be-vegetables:latest
+        docker tag agisit24-g10-storage_device localhost:5000/agisit24-g10_storage-device:latest
+        docker push localhost:5000/agisit24-g10_fe:latest
+        docker push localhost:5000/agisit24-g10_be-carbs:latest
+        docker push localhost:5000/agisit24-g10_be-dairy:latest
+        docker push localhost:5000/agisit24-g10_be-meats:latest
+        docker push localhost:5000/agisit24-g10_be-vegetables:latest
+        docker push localhost:5000/agisit24-g10_storage-device:latest
+    - name: Remove local images
+      shell: |
+        docker rmi agisit24-g10-fe:latest
+        docker rmi agisit24-g10-be_carbs:latest
+        docker rmi agisit24-g10-be_dairy:latest
+        docker rmi agisit24-g10-be_meats:latest
+        docker rmi agisit24-g10-be_vegetables:latest
+        docker rmi agisit24-g10-storage_device:latest
+        docker rmi localhost:5000/agisit24-g10_fe:latest
+        docker rmi localhost:5000/agisit24-g10_be-carbs:latest
+        docker rmi localhost:5000/agisit24-g10_be-dairy:latest
+        docker rmi localhost:5000/agisit24-g10_be-meats:latest
+        docker rmi localhost:5000/agisit24-g10_be-vegetables:latest
+        docker rmi localhost:5000/agisit24-g10_storage-device:latest
+    - name: Remove source code
+      shell: |
+        rm -rf /home/rmcicd/agisit24-g10
+
+- name: "Docker Login on Targets"
+  hosts: targets
+  become: yes
+  become_user: root
+  become_method: sudo
+  vars_files:
+    - "{{ playbook_dir }}/vars.yml"
+  tasks:
+    - name: "Trust RMCICD certificate"
+      copy:
+        src: "{{ playbook_dir }}/secrets/ca.crt"
+        dest: /home/ubuntu/ca.pem
+        mode: '0644'
+    - name: "Docker Login"
+      shell: |
+        docker --config /home/ubuntu/.docker login {{ rmcicd_int }}:5000 -u admin -p admin
+
+- name: "Deploy Node Exporter on Targets"
+  hosts: targets
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: "Deploy Node Exporter"
+      shell: |
+        docker run -d \
+          --name node-exporter \
+          --restart=always \
+          -v "/:/host:ro,rslave" \
+          -p 9100:9100 \
+          quay.io/prometheus/node-exporter:latest \
+          --path.rootfs /host \
+          --collector.disable-defaults \
+          --collector.cpu \
+          --collector.meminfo
+
+- name: "Deploy Prometheus on RMCICD"
+  hosts: rmcicd
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: "Deploy Prometheus"
+      shell: |
+        docker volume create prometheus-storage
+        docker run -d \
+          --name prometheus \
+          --restart=always \
+          -v prometheus-storage:/prometheus \
+          -v /home/rmcicd/resources/prometheus.yml:/etc/prometheus/prometheus.yml \
+          -p 9090:9090 \
+          prom/prometheus
+
+- name: "Deploy Grafana on RMCICD"
+  hosts: rmcicd
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: "Copy grafana resources"
+      copy:
+        src: "{{ playbook_dir }}/grafana-resources"
+        dest: /home/rmcicd
+    - name: "Deploy Grafana"
+      shell: |
+        docker run -d \
+          --name grafana \
+          --restart=always \
+          -v /home/rmcicd/grafana-resources/provisioning:/etc/grafana/provisioning \
+          -v /home/rmcicd/grafana-resources/dashboards:/var/lib/grafana/dashboards \
+          -v /home/rmcicd/grafana-resources/config.ini:/etc/grafana/config.ini \
+          -p 3000:3000 \
+          grafana/grafana
+    - name: Setup the network and connect
+      shell: |
+        docker network create --subnet 172.18.0.0/16 monitoring
+        docker network connect --ip 172.18.0.2 monitoring prometheus
+        docker network connect --ip 172.18.0.3 monitoring grafana

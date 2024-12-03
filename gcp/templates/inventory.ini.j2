@@ -1,0 +1,210 @@
+# file: inventory.ini
+
+# RMCICD
+rmcicd ansible_host=${ rmcicd.ext_ip } ansible_user=rmcicd ansible_connection=ssh
+rmcicd_int ansible_host=${ rmcicd.int_ip } ansible_user=rmcicd ansible_connection=ssh
+
+# Front-ends
+%{ for instance in fe_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in fe_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Back-ends (Carbs)
+%{ for instance in carbs_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in carbs_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Back-ends (Dairy)
+%{ for instance in dairy_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in dairy_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Back-ends (Meats)
+%{ for instance in meats_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in meats_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Back-ends (Vegetables)
+%{ for instance in vegetables_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in vegetables_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Storage Device
+%{ for instance in storage_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in storage_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+# Database
+%{ for instance in db_ext ~}
+${ instance.id } ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+%{ for instance in db_int ~}
+${ instance.id }_int ansible_host=${ instance.ip } ansible_user=ubuntu ansible_connection=ssh
+%{ endfor ~}
+
+
+# The local deployment host VM
+[osmgmt]
+localhost           ansible_connection=local
+
+[fe]
+%{ for instance in fe_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[fe_int]
+%{ for instance in fe_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[carbs]
+%{ for instance in carbs_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[carbs_int]
+%{ for instance in carbs_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[dairy]
+%{ for instance in dairy_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[dairy_int]
+%{ for instance in dairy_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[meats]
+%{ for instance in meats_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[meats_int]
+%{ for instance in meats_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[vegetables]
+%{ for instance in vegetables_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[vegetables_int]
+%{ for instance in vegetables_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[storage]
+%{ for instance in storage_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[storage_int]
+%{ for instance in storage_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[db]
+%{ for instance in db_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[db_int]
+%{ for instance in db_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[be]
+%{ for instance in carbs_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in dairy_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in meats_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in vegetables_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[be_int]
+%{ for instance in carbs_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in dairy_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in meats_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in vegetables_int ~}
+${ instance.id }_int
+%{ endfor ~}
+
+[targets]
+%{ for instance in fe_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in carbs_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in dairy_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in meats_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in vegetables_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in storage_ext ~}
+${ instance.id }
+%{ endfor ~}
+%{ for instance in db_ext ~}
+${ instance.id }
+%{ endfor ~}
+
+[internal_targets]
+%{ for instance in fe_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in carbs_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in dairy_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in meats_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in vegetables_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in storage_int ~}
+${ instance.id }_int
+%{ endfor ~}
+%{ for instance in db_int ~}
+${ instance.id }_int
+%{ endfor ~}
